@@ -1,0 +1,48 @@
+name: deploy
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  build-deploy:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      # the CPU-side unit suite; the GPU/browser checks (smoke, shot, upload,
+      # export, curvature) need WebGPU and run locally instead
+      - run: |
+          node scripts/test-sparse.ts
+          node scripts/test-loaders.ts
+          node scripts/test-intersect.ts
+          node scripts/test-h5.ts
+          node scripts/test-loop.ts
+          node scripts/test-limit-sample.ts
+          node scripts/test-resample.ts
+          node scripts/test-zhou.ts
+      - run: npm run build
+      # Pages must already be enabled with "GitHub Actions" as the source; the
+      # workflow token cannot create the site itself.
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: dist
+      - id: deployment
+        uses: actions/deploy-pages@v4
