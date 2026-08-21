@@ -118,17 +118,3 @@ with one mixed-precision refinement pass on analysis; the grid is Gauss–Legend
 equispaced, analysis oversampling `auto` = 2× (4× for a PL input, 3× for a rough
 map). On the exact sphere at lmax 127 the mean-curvature field is uniform to
 0.03 % rms (unrefined: 1.0 %).
-
-## References
-
-The page footer lists the papers each piece implements: Choi–Lam–Lui (FLASH
-conformal map, SIAM JIS 2015), Choi–Leung-Liu–Gu–Lui (Möbius area correction
-via partial welding, SIAM JIS 2020), Lyu–Lui–Choi (spherical density-equalizing
-map, SIAM JIS 2024), Choi–Ho–Lui (point-cloud parameterization, SIAM JIS 2016),
-Gu–Wang–Chan–Thompson–Yau (grid analysis & filtering, IEEE TMI 2004),
-Zhou–Bao–Shi (adaptive sampling, CAD 2004), Stam (Loop evaluation, SIGGRAPH 98),
-Veerapaneni–Rahimian–Biros–Zorin (curvature dealiasing, JCP 2011).
-
-## License
-
-CECILL-2.1 (inherited from SHTns via the vendored shtns-webgpu transforms).
