@@ -14,8 +14,8 @@ This is the browser counterpart of the MATLAB module
 `sphere-surf/spherical-harmonic-fitting`, and carries the conclusions reached
 there: compute coefficients once by quadrature projection (bounded at any
 band-limit), never hard-truncate for display — taper (trapeziform) or smooth
-(Gaussian / heat-kernel) instead — and choose the map by geometry: conformal
-+ Möbius unless the conformal factor is too spread, then area-equalized.
+(Gaussian / heat-kernel) instead — and choose the map by geometry:
+conformal + Möbius unless the conformal factor is too spread, then area-equalized.
 
 ## Pipeline
 
