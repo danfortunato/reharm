@@ -1,0 +1,10 @@
+import { readFileSync } from 'node:fs';
+import { parseSHM } from '../src/mesh/loaders.ts';
+import { sphericalTutteMap } from '../src/chart/conformal.ts';
+import { sdem } from '../src/chart/sdem.ts';
+const m = parseSHM(readFileSync(new URL(`../public/presets/${process.argv[2] ?? 'spot'}.mesh`, import.meta.url)).buffer.slice(0));
+const S = sphericalTutteMap(m);
+let last = performance.now();
+const r = await sdem(m, S, { maxIter: Number(process.argv[3] ?? 5), onStep: (k, e) => { const now = performance.now(); console.log(`step ${k}: spread ${e.toFixed(4)}  (${(now - last).toFixed(0)} ms)`); last = now; } });
+console.log('repairs', r.repairs);
+console.log('done', r.steps, r.spread.toFixed(4));

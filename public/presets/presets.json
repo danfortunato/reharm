@@ -1,0 +1,72 @@
+[
+ {
+  "key": "spot",
+  "label": "spot",
+  "file": "spot.mesh",
+  "nv": 2930,
+  "nf": 5856,
+  "euler": 2,
+  "source": "spot/spot_triangulated.obj",
+  "normalized": "centred, unit bbox diagonal"
+ },
+ {
+  "key": "bunny",
+  "label": "bunny",
+  "file": "bunny.mesh",
+  "nv": 3485,
+  "nf": 6966,
+  "euler": 2,
+  "source": "spherical-harmonic-fitting/data/bunny.off",
+  "normalized": "centred, unit bbox diagonal"
+ },
+ {
+  "key": "david",
+  "label": "david",
+  "file": "david.mesh",
+  "nv": 10671,
+  "nf": 21338,
+  "euler": 2,
+  "source": "spherical-conformal-map/david.mat",
+  "normalized": "centred, unit bbox diagonal"
+ },
+ {
+  "key": "maxplanck",
+  "label": "max",
+  "file": "maxplanck.mesh",
+  "nv": 9002,
+  "nf": 18000,
+  "euler": 2,
+  "source": "spherical-density-equalizing-map/data/maxplanck.mat",
+  "normalized": "centred, unit bbox diagonal"
+ },
+ {
+  "key": "lion",
+  "label": "lion",
+  "file": "lion.mesh",
+  "nv": 50002,
+  "nf": 100000,
+  "euler": 2,
+  "source": "spherical-conformal-map/lion.mat",
+  "normalized": "centred, unit bbox diagonal"
+ },
+ {
+  "key": "brain",
+  "label": "brain 1",
+  "file": "brain.mesh",
+  "nv": 48487,
+  "nf": 96970,
+  "euler": 2,
+  "source": "spherical-conformal-map/brain.mat",
+  "normalized": "centred, unit bbox diagonal"
+ },
+ {
+  "key": "brain_flash1",
+  "label": "brain 2",
+  "file": "brain_flash1.mesh",
+  "nv": 45564,
+  "nf": 91124,
+  "euler": 2,
+  "source": "FLASH/data/Brains1.mat",
+  "normalized": "centred, unit bbox diagonal"
+ }
+]

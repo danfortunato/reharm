@@ -1,0 +1,30 @@
+{
+  "name": "reharm",
+  "version": "0.1.0",
+  "description": "Spherical-harmonic fitting of genus-0 surfaces in the browser: spherical charts, grid quadrature transforms on WebGPU, live filtering by degree",
+  "type": "module",
+  "engines": {
+    "node": ">=22.6"
+  },
+  "license": "CECILL-2.1",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc --noEmit && vite build",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "h5wasm": "^0.10.3",
+    "three": "^0.183.0"
+  },
+  "optionalDependencies": {
+    "webgpu": "^0.4.0"
+  },
+  "devDependencies": {
+    "@types/node": "^26.1.1",
+    "@types/three": "^0.185.1",
+    "@webgpu/types": "^0.1.44",
+    "puppeteer-core": "^23.11.1",
+    "typescript": "^5.5.0",
+    "vite": "^5.4.0"
+  }
+}
