@@ -37,7 +37,7 @@
       /* the two boxes share the grid row's height (the taller wins, floor 170px);
          the canvas is absolutely positioned so its HiDPI backing-store size can
          never feed back into layout (dpr>1 made it grow unboundedly otherwise) */
-      .belowbox { position: relative; display: flex; min-height: 170px; }
+      .belowbox { position: relative; display: flex; min-height: 240px; }
       .pane .note { position: absolute; inset: 0; display: grid; place-items: center; color: var(--ink-2); font-size: 13.5px; text-align: center; padding: 0 24px; pointer-events: none; }
       .pane .note:empty { display: none; }
       /* Overlaid on the pane's right edge, not in the layout flow: toggling it
@@ -53,7 +53,7 @@
       .colorbar canvas { border: 1px solid var(--line); border-radius: 2px; }
       .colorbar-label { font-size: 11px; color: var(--ink-2); font-variant-numeric: tabular-nums; }
       .below { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 12px; }
-      pre.metrics { margin: 0; flex: 1; box-sizing: border-box; font: 12.5px/1.5 ui-monospace, SFMono-Regular, Menlo, monospace; color: var(--ink); white-space: pre-wrap; border: 1px solid var(--line); border-radius: 8px; padding: 38px 12px 10px; min-height: 170px; }
+      pre.metrics { margin: 0; flex: 1; box-sizing: border-box; font: 12.5px/1.5 ui-monospace, SFMono-Regular, Menlo, monospace; color: var(--ink); white-space: pre-wrap; border: 1px solid var(--line); border-radius: 8px; padding: 38px 12px 10px; min-height: 240px; }
       canvas.spectrum { position: absolute; inset: 0; width: 100%; height: 100%; box-sizing: border-box; display: block; border: 1px solid var(--line); border-radius: 8px; background: var(--sphere-bg); }
       .status { font-size: 13px; color: var(--ink-2); margin: 8px 0 0; min-height: 1.4em; }
       .refs div.refs-title { font-size: 12.5px; color: var(--ink-2); margin: 0 0 10px; }   /* outranks the .refs div margin rule */
@@ -61,7 +61,7 @@
       .refs div { margin: 3px 0; }
       .refs b { font-weight: 600; color: var(--ink-2); }
       .refs a { color: var(--accent); text-decoration: none; }
-      .statusrow { display: flex; align-items: flex-end; gap: 12px; }
+      .statusrow { display: flex; align-items: flex-end; gap: 12px; margin-top: 22px; }
       .statusrow .status { flex: 1; }
       .busy { position: absolute; inset: 0; display: grid; place-content: center; gap: 10px; justify-items: center;
               background: color-mix(in srgb, var(--sphere-bg) 80%, transparent); z-index: 2; }
@@ -175,6 +175,7 @@
       <div class="statusrow">
         <p class="status" id="status"></p>
         <button id="exporth5" title="Download the fitted surface's spherical-harmonic coefficients (current filter applied) as an HDF5 file in turing-surface's geometry layout: /geometry Gx, Gy, Gz and /grid attributes. Readable with h5py and MATLAB's h5read.">Download .h5</button>
+        <button id="exportts" title="Open turing-surface in a new tab with this surface loaded as its geometry, ready to run reaction-diffusion models on. Sends the same coefficients as the .h5 download, centered and scaled to rms radius 1 to match turing-surface's shapes.">Export to turing-surface</button>
       </div>
       <div class="panes">
         <div class="pane" id="pane-orig"><div class="view" id="view-orig"></div><div class="cap">input</div><div class="note" id="note-orig"></div></div>

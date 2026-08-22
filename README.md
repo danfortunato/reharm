@@ -8,7 +8,10 @@ degree in real time. Sibling of
 transform (shtns-webgpu, vendored under `src/sht/`) and renderer
 (`src/render/`) it reuses; **Download .h5** exports the fitted coefficients in
 exactly the geometry layout that solver consumes (`/geometry` Gx/Gy/Gz +
-`/grid`, readable with h5py and MATLAB's `h5read`).
+`/grid`, readable with h5py and MATLAB's `h5read`), and **Export to
+turing-surface** hands them to a live turing-surface tab directly
+(window.open + postMessage, centered and scaled to rms radius 1), so a fitted
+mesh becomes a reaction-diffusion domain in one click.
 
 This is the browser counterpart of the MATLAB module
 `sphere-surf/spherical-harmonic-fitting`, and carries the conclusions reached
@@ -46,7 +49,7 @@ transforms, so the N slider is live.
 | output metrics | grid residual (rms/max), and the embeddedness signal: **self-intersection count** (fixed Möller checker: unit normals, sliver skip, poles merged) and **collapsed faces** (< 10 % of the same face's area on the input surface), computed in a worker per filter change |
 | coloring | mean/Gaussian curvature or radius: fully spectral sin-weighted derivatives (no 1/sin anywhere), dealiased per Veerapaneni et al. (differentiate on a ≥ 2× grid, filter to the surface band, restrict) |
 | view | display oversampling (auto targets ~512 render latitudes), wireframe (input mesh edges / output collocation grid), sphere morph, ingested-points toggle, collocation-grid overlay, pole editing (ctrl+drag the marker, then apply: an exact symmetry of the fit that moves where the grid clusters) |
-| export | Download .h5: filtered coefficients + grid attrs + provenance (model, map, sampling, filter) in turing-surface's geometry layout |
+| export | Download .h5: filtered coefficients + grid attrs + provenance (model, map, sampling, filter) in turing-surface's geometry layout. Export to turing-surface: the same coefficients handed to a live tab by postMessage — centered, scaled to rms radius 1 — where they land as the selected geometry at their own lmax (`src/fit/exportTuring.ts`; point the button at a local checkout via `localStorage['reharm-turing-surface-url']`) |
 
 ## Development
 
@@ -63,6 +66,7 @@ node scripts/smoke.mjs out.png                       # fit, slide N, map Spot, s
 node scripts/shot.mjs out.png bunny area 127 127     # any configuration: geometry map lmax N [subdiv] [filter] [color]
 node scripts/test-upload.mjs                         # upload flow: OBJ + point-cloud PLY end to end
 node scripts/test-export.mjs <dir>                   # .h5 download round trip
+node scripts/test-turing-e2e.mjs                     # export-to-turing-surface handshake (build ../turing-surface too)
 node scripts/measure-curv.mjs                        # curvature accuracy with/without refinement
 ```
 
@@ -81,6 +85,7 @@ node scripts/test-limit-sample.ts  # exact limit evaluation (1e-16 corners, grad
 node scripts/test-intersect.ts     # self-intersection checker (incl. brute-force parity)
 node scripts/test-loaders.ts       # PLY/STL readers (a cube in all four encodings)
 node scripts/test-h5.ts            # HDF5 export round trip (h5wasm/node)
+node scripts/test-turing.ts        # turing-surface export normalization (exact on the sphere)
 node scripts/test-zhou.ts          # adaptive-sampling warp equalizes density
 node scripts/test-pointcloud.ts <refdir>   # point-cloud pipeline vs MATLAB references
                                    # (generate refdir with scripts/make_pc_refs.m + make_pc_stages.m)

@@ -17,6 +17,12 @@ import { gridCurvature } from './render/gridCurvature.ts';
 import { GridFitter, type Coefficients } from './fit/gridFit.ts';
 import { applyGains, degreeGains, powerSpectrum, type FilterSpec } from './fit/filters.ts';
 import { encodeGeometryH5, filterLabel, type H5Module } from './fit/exportH5.ts';
+import {
+  normalizeGeometry,
+  sendGeometry,
+  TURING_SURFACE_URL,
+  type TuringGeometryPayload,
+} from './fit/exportTuring.ts';
 import { bboxDiagonal, eulerCharacteristic, makeMesh, normalize, type Mesh } from './mesh/types.ts';
 import { icosphere } from './mesh/icosphere.ts';
 import { readMeshFile } from './mesh/loaders.ts';
@@ -64,6 +70,7 @@ const elMorph = $<HTMLInputElement>('morph');
 const elShowPoints = $<HTMLInputElement>('showpoints');
 const elLabPoints = $<HTMLElement>('lab-points');
 const elExport = $<HTMLButtonElement>('exporth5');
+const elExportTs = $<HTMLButtonElement>('exportts');
 const elStatus = $<HTMLParagraphElement>('status');
 const elMetrics = $<HTMLPreElement>('metrics');
 const elSpectrum = $<HTMLCanvasElement>('spectrum');
@@ -954,6 +961,64 @@ async function exportGeometry(): Promise<void> {
   }
 }
 
+/** Hand the displayed surface to a fresh turing-surface tab as its geometry
+ *  (src/fit/exportTuring.ts): same coefficients as the .h5 download, centered
+ *  and scaled to rms radius 1. The tab must open synchronously in the click —
+ *  popup blockers only allow that — so this is not async itself. */
+function exportToTuringSurface(): void {
+  if (!coef || !fitter) {
+    status('nothing to export yet — wait for a fit to finish', true);
+    return;
+  }
+  const c = coef;
+  const base = localStorage.getItem('reharm-turing-surface-url') ?? TURING_SURFACE_URL;
+  let url: URL;
+  try {
+    url = new URL(base);
+  } catch {
+    status(`export failed: bad turing-surface URL '${base}'`, true);
+    return;
+  }
+  url.searchParams.set('import', 'reharm');
+  const win = window.open(url.href, '_blank');
+  if (!win) {
+    status('export failed: the browser blocked the turing-surface tab', true);
+    return;
+  }
+  elExportTs.disabled = true;
+  void (async () => {
+    try {
+      const gains = lastGains;
+      const [X, Y, Z] = c.q.map((q) => (gains ? applyGains(q, c.lmax, c.mmax, gains) : q));
+      const norm = normalizeGeometry(X, Y, Z, c.lmax, c.mmax);
+      const payload: TuringGeometryPayload = {
+        type: 'reharm-geometry',
+        version: 1,
+        lmax: c.lmax,
+        mmax: c.mmax,
+        Gx: norm.X,
+        Gy: norm.Y,
+        Gz: norm.Z,
+        name: meshLabel,
+        provenance: {
+          app: 'reharm',
+          model: meshLabel,
+          map: sampler ? 'exact (synthetic)' : chartInfo?.type ?? '',
+          sampling: elSampling.value === 'adaptive' ? 'adaptive (Zhou)' : 'uniform',
+          filter: filterLabel(filterSpec()),
+          center: norm.center,
+          scale: norm.scale,
+        },
+      };
+      await sendGeometry(win, url.origin, payload);
+    } catch (e) {
+      status(`export to turing-surface failed: ${(e as Error).message}`, true);
+    } finally {
+      elExportTs.disabled = false;
+    }
+  })();
+}
+
 // ---------------------------------------------------------------- coloring
 /** Robust colormap range: 2–98 percentiles (curvature has pole/sliver outliers),
  *  floored so a numerically-constant field is drawn as uniform. */
@@ -1388,6 +1453,7 @@ async function main(): Promise<void> {
   // Reset one pane and copy its pose to the other, so the panes stay in lockstep
   // even when their geometries frame slightly differently.
   elExport.addEventListener('click', () => void exportGeometry());
+  elExportTs.addEventListener('click', () => exportToTuringSurface());
   $('resetview').addEventListener('click', () => {
     const lead = sceneOrig ?? sceneFit;
     lead?.resetCamera();
