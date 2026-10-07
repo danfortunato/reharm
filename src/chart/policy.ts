@@ -28,7 +28,7 @@ export interface ChartInfo {
   mobiusEvals?: number;
   sdemSteps?: number;
   sdemSpread?: number;
-  sdemStopped?: 'converged' | 'stalled' | 'max steps';
+  sdemStopped?: 'converged' | 'stalled' | 'plateau' | 'max steps';
   /** adjacent-face |Δ log λ|: mean and 99th percentile (smaller = smoother chart) */
   roughnessMean: number;
   roughnessP99: number;
@@ -40,7 +40,7 @@ export interface ChartInfo {
 export async function sphericalChart(m: Mesh, kind: ChartKind = 'auto', maxLambdaRatio = 1e4, onProgress?: (msg: string) => void, sdemMaxSteps: number | (() => number) = 300, chartSmoothing = 2, sdemCorrection: 'repair' | 'lbs' = 'repair', yieldStep?: () => Promise<void>): Promise<{ S: Float64Array; info: ChartInfo }> {
   const t0 = performance.now();
   let S: Float64Array, type: ChartInfo['type'], mobiusEvals: number | undefined, sdemSteps: number | undefined, sdemSpread: number | undefined;
-  let sdemStopped: 'converged' | 'stalled' | 'max steps' | undefined;
+  let sdemStopped: 'converged' | 'stalled' | 'plateau' | 'max steps' | undefined;
   let crowded = false;
   const areaChart = async () => {
     onProgress?.('Tutte map…');

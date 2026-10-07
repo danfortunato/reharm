@@ -266,6 +266,9 @@ export interface SdemOptions {
   correction?: 'lbs' | 'repair';
   /** stop after this many consecutive rejected steps (map no longer moving) */
   maxRejected?: number;
+  /** stop once the best spread so far has improved by less than a factor
+   *  plateauGain over the last plateauWindow steps (defaults 100, 0.9) */
+  plateauWindow?: number; plateauGain?: number;
   onStep?: (step: number, err: number) => void;
   /** live cap on iterations, read before every step (a UI can change it
    *  mid-run); overrides maxIter when present */
@@ -276,16 +279,22 @@ export interface SdemOptions {
 }
 
 /** The density-equalizing map from an initial spherical map S (e.g. the Tutte map). */
-export async function sdem(m: Mesh, S: Float64Array, opt: SdemOptions = {}): Promise<{ S: Float64Array; steps: number; spread: number; repairs: number; stopped: 'converged' | 'stalled' | 'max steps' }> {
+export async function sdem(m: Mesh, S: Float64Array, opt: SdemOptions = {}): Promise<{ S: Float64Array; steps: number; spread: number; repairs: number; stopped: 'converged' | 'stalled' | 'plateau' | 'max steps' }> {
   const { faces: f, nv, nf } = m;
   const dt = opt.dt ?? 0.1, eps = opt.epsilon ?? 1e-3, maxIter = opt.maxIter ?? 300;
   // The density spread is not a usable convergence signal: SDEM progresses in
   // bursts (a long plateau, then a fold repair unlocks another drop). What is
   // reliable is whether the map still moves: once every step is rejected (all
   // halvings exhausted, map returned unchanged) nothing can change any more.
+  // A plateau is judged on the BEST spread so far over a long window, which
+  // rides out the noise and the bursts: on maps whose spread levels off far
+  // above epsilon (e.g. 0.15 on bunny, 0.015 on a blob with ~20 necked arms)
+  // the remaining steps change the map's area distortion by only a few
+  // percent, and without this stop they ran to the step cap.
   const maxRejected = opt.maxRejected ?? 20;
+  const plateauWindow = opt.plateauWindow ?? 100, plateauGain = opt.plateauGain ?? 0.9;
   let rejected = 0;
-  let stopped: 'converged' | 'stalled' | 'max steps' = 'max steps';
+  let stopped: 'converged' | 'stalled' | 'plateau' | 'max steps' = 'max steps';
   const population = opt.population ?? faceAreas(f, m.positions);
   const r = S.slice(); normalizeRows(r);
   const bigtri = regularTriangle(f, nv, r);
@@ -297,6 +306,7 @@ export async function sdem(m: Mesh, S: Float64Array, opt: SdemOptions = {}): Pro
   const spread = (x: Float64Array) => { let s = 0, s2 = 0; for (const v of x) { s += v; s2 += v * v; } const mean = s / x.length; return Math.sqrt(Math.max(s2 / x.length - mean * mean, 0)) / mean; };
   let rho = density(), err = spread(rho), step = 0;
   opt.onStep?.(0, err);
+  const bestHist: number[] = [err];
   const rhoTemp = rho.slice();
   let repairs = 0;
   const capOf = opt.maxIterLive ?? (() => maxIter);
@@ -314,7 +324,7 @@ export async function sdem(m: Mesh, S: Float64Array, opt: SdemOptions = {}): Pro
     prof('assembly', tt); tt = performance.now();
     const rhs = new Float64Array(nv); for (let v = 0; v < nv; v++) rhs[v] = A[v] * rho[v];
     rhoTemp.set(rho);
-    const it = pcgJacobi(M, rhs, rhoTemp, 1e-10, 5000);
+    const it = pcgJacobi(M, rhs, rhoTemp, 1e-6, 5000);
     prof(`pcg (avg ${0}it)`, tt); (globalThis as any).__pcgIts = ((globalThis as any).__pcgIts ?? 0) + it.iterations; tt = performance.now();
     const gf = faceGradient(f, r, rhoTemp);
     const gv = faceToVertex(f, nv, faceAreas(f, r), gf, 3);
@@ -337,6 +347,33 @@ export async function sdem(m: Mesh, S: Float64Array, opt: SdemOptions = {}): Pro
         if (countFolds(f, cand) > 0) { repairs++; if (repairSphericalFolds(m, cand, 60).folds > 0) continue; }
         rNew = cand; break;
       }
+      if (rNew === r) {
+        // Every global halving folded. The flow is fastest exactly where the
+        // chart is most crowded, i.e. where triangles are tiniest (a narrow-
+        // necked protrusion: steps of ~rad against triangles of ~1e-4 rad),
+        // and no uniform step can serve both. Cap each vertex's move at a
+        // fraction of its shortest incident edge on the sphere instead.
+        const minEdge = new Float64Array(nv).fill(Infinity);
+        for (let t = 0; t < nf; t++) {
+          for (let k = 0; k < 3; k++) {
+            const a = f[3 * t + k], b = f[3 * t + (k + 1) % 3];
+            const e = Math.hypot(r[3 * a] - r[3 * b], r[3 * a + 1] - r[3 * b + 1], r[3 * a + 2] - r[3 * b + 2]);
+            if (e < minEdge[a]) minEdge[a] = e;
+            if (e < minEdge[b]) minEdge[b] = e;
+          }
+        }
+        for (let frac = 0.3, h = 0; h <= 4; h++, frac /= 2) {
+          const cand = new Float64Array(r.length);
+          for (let v = 0; v < nv; v++) {
+            const d = dt * Math.hypot(dr[3 * v], dr[3 * v + 1], dr[3 * v + 2]);
+            const s = d > frac * minEdge[v] ? frac * minEdge[v] / d : 1;
+            for (let c = 0; c < 3; c++) cand[3 * v + c] = r[3 * v + c] + s * dt * dr[3 * v + c];
+          }
+          normalizeRows(cand);
+          if (countFolds(f, cand) > 0) { repairs++; if (repairSphericalFolds(m, cand, 60).folds > 0) continue; }
+          rNew = cand; break;
+        }
+      }
     } else {
       rNew = updateAndCorrectOverlap(f, nv, S, r, bigtri, dr, dt);
     }
@@ -347,7 +384,9 @@ export async function sdem(m: Mesh, S: Float64Array, opt: SdemOptions = {}): Pro
     err = spread(rhoTemp);
     opt.onStep?.(step, err);
     rho = density();
+    bestHist.push(Math.min(bestHist[bestHist.length - 1], err));
     if (rejected >= maxRejected) { stopped = 'stalled'; break; }
+    if (step >= plateauWindow && bestHist[step] > plateauGain * bestHist[step - plateauWindow]) { stopped = 'plateau'; break; }
   }
   if (err < eps) stopped = 'converged';
   return { S: r, steps: step, spread: err, repairs, stopped };
