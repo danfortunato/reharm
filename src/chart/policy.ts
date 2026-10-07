@@ -3,7 +3,8 @@
  * Möbius, unless the conformal factor's max/min exceeds a threshold -- then
  * the shape has features the uniform grid cannot resolve through that chart
  * and an area-equalized chart is called for (Tutte -> SDEM -> smooth -> repair).
- * Every result goes through fold repair.
+ * 'balanced' relaxes that area-equalized chart toward a conformal/area
+ * trade-off (src/chart/balanced.ts). Every result goes through fold repair.
  */
 import { makeMesh, type Mesh } from '../mesh/types.ts';
 import { convexHull } from '../mesh/hull.ts';
@@ -14,11 +15,12 @@ import { repairSphericalFolds } from './repair.ts';
 import { countFolds, lambdaStats, chartRoughness } from './meshops.ts';
 import { sdem } from './sdem.ts';
 import { smoothChart } from './smooth.ts';
+import { balancedRelax } from './balanced.ts';
 
-export type ChartKind = 'auto' | 'conformal' | 'tutte' | 'area';
+export type ChartKind = 'auto' | 'conformal' | 'tutte' | 'area' | 'balanced';
 
 export interface ChartInfo {
-  type: 'conformal + Möbius' | 'Tutte' | 'area-equalized (Tutte → SDEM → repair)' | 'point cloud + Möbius (Choi–Ho–Lui)';
+  type: 'conformal + Möbius' | 'Tutte' | 'area-equalized (Tutte → SDEM → repair)' | 'balanced (SDEM → conformal/area relaxation)' | 'point cloud + Möbius (Choi–Ho–Lui)';
   lambdaSpread: number;
   lambdaRatio: number;
   foldsRepaired: number;
@@ -29,6 +31,7 @@ export interface ChartInfo {
   sdemSteps?: number;
   sdemSpread?: number;
   sdemStopped?: 'converged' | 'stalled' | 'plateau' | 'max steps';
+  balancedIters?: number;
   /** adjacent-face |Δ log λ|: mean and 99th percentile (smaller = smoother chart) */
   roughnessMean: number;
   roughnessP99: number;
@@ -41,6 +44,7 @@ export async function sphericalChart(m: Mesh, kind: ChartKind = 'auto', maxLambd
   const t0 = performance.now();
   let S: Float64Array, type: ChartInfo['type'], mobiusEvals: number | undefined, sdemSteps: number | undefined, sdemSpread: number | undefined;
   let sdemStopped: 'converged' | 'stalled' | 'plateau' | 'max steps' | undefined;
+  let balancedIters: number | undefined;
   let crowded = false;
   const areaChart = async () => {
     onProgress?.('Tutte map…');
@@ -58,6 +62,15 @@ export async function sphericalChart(m: Mesh, kind: ChartKind = 'auto', maxLambd
     S = sphericalTutteMap(m); type = 'Tutte';
   } else if (kind === 'area') {
     await areaChart();
+  } else if (kind === 'balanced') {
+    await areaChart();
+    // the relaxation needs a fold-free start; it keeps the map fold-free
+    if (countFolds(m.faces, S!) > 0) repairSphericalFolds(m, S!);
+    if (countFolds(m.faces, S!) === 0) {
+      onProgress?.('balancing conformal/area distortion…');
+      const b = await balancedRelax(m, S!, { yieldStep, onIter: (k, e) => { if (k % 50 === 0) onProgress?.(`balancing: iteration ${k}, energy ${e.toFixed(4)}`); } });
+      S = b.S; balancedIters = b.iterations; type = 'balanced (SDEM → conformal/area relaxation)';
+    }
   } else {
     onProgress?.('conformal map…');
     const conf = sphericalConformalMap(m);
@@ -74,7 +87,7 @@ export async function sphericalChart(m: Mesh, kind: ChartKind = 'auto', maxLambd
   return {
     S: S!,
     info: { type: type!, lambdaSpread: spread, lambdaRatio: ratio, foldsRepaired: foldsBefore, foldsLeft: rep.folds,
-            crowded, timeMs: performance.now() - t0, mobiusEvals, sdemSteps, sdemSpread, sdemStopped,
+            crowded, timeMs: performance.now() - t0, mobiusEvals, sdemSteps, sdemSpread, sdemStopped, balancedIters,
             roughnessMean: rough.mean, roughnessP99: rough.p99 },
   };
 }

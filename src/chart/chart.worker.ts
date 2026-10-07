@@ -21,7 +21,7 @@ self.onmessage = async (e: MessageEvent<ChartRequest | ChartUpdate>) => {
       // and an explicit area/Tutte request recharts the induced mesh outright.
       const r = pointCloudChart(positions, (progress) => self.postMessage({ id, progress }));
       let S2 = r.S, info2 = r.info;
-      if (kind === 'area' || kind === 'tutte' || (kind === 'auto' && r.info.crowded)) {
+      if (kind === 'area' || kind === 'balanced' || kind === 'tutte' || (kind === 'auto' && r.info.crowded)) {
         const im = makeMesh(r.positions, r.faces);
         const rechart = await sphericalChart(
           im, kind === 'auto' ? 'area' : kind, maxLambdaRatio,

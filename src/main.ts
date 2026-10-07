@@ -537,7 +537,7 @@ async function computeChart(): Promise<void> {
   chartWorker = worker;
   const id = ++chartRequestId;
   const kind = elChart.value as ChartKind;
-  setBusy(`mapping: ${isCloud ? 'point cloud…' : kind === 'area' ? 'Tutte map…' : 'conformal map…'}`);
+  setBusy(`mapping: ${isCloud ? 'point cloud…' : kind === 'area' || kind === 'balanced' ? 'Tutte map…' : 'conformal map…'}`);
   const m = mesh;
   try {
     const { S, faces, positions } = await new Promise<{ S: Float64Array; faces?: Uint32Array; positions?: Float32Array }>((resolve, reject) => {
@@ -1215,8 +1215,9 @@ function updateMetrics(gains?: Float64Array): void {
       : '';
     row('map:', `${type}${folds}`);
     if (chartInfo.sdemSteps !== undefined) row('  SDEM:', `${chartInfo.sdemSteps} steps (${chartInfo.sdemStopped}) · spread ${chartInfo.sdemSpread?.toFixed(3)}`);
+    if (chartInfo.balancedIters !== undefined) row('  balance:', `${chartInfo.balancedIters} iterations (alpha 0.5)`);
     const ratio = chartInfo.lambdaRatio;
-    row('  λ:', `std/mean ${chartInfo.lambdaSpread.toFixed(3)} · max/min ${ratio >= 1e4 ? ratio.toExponential(1) : String(Number(ratio.toPrecision(2)))}${chartInfo.crowded && !chartInfo.type.startsWith('area') ? '  — crowded: try the area-equalized map' : ''}`);
+    row('  λ:', `std/mean ${chartInfo.lambdaSpread.toFixed(3)} · max/min ${ratio >= 1e4 ? ratio.toExponential(1) : String(Number(ratio.toPrecision(2)))}${chartInfo.crowded && !chartInfo.type.startsWith('area') && !chartInfo.type.startsWith('balanced') ? '  — crowded: try the area-equalized or balanced map' : ''}`);
     row('  rough:', `mean ${chartInfo.roughnessMean.toFixed(3)} · p99 ${chartInfo.roughnessP99.toFixed(2)}   (conformal ≈ 0.03–0.13)`);
   }
   if (coef && fitter) {
@@ -1399,9 +1400,9 @@ async function main(): Promise<void> {
     // a chart in flight takes the new cap live (SDEM re-reads it every step);
     // otherwise recompute as for any other chart parameter
     if (chartWorker) { chartWorker.postMessage({ id: chartRequestId, sdemMaxSteps: Number(elSdemSteps.value) }); return; }
-    if (chartInfo?.sdemSteps !== undefined || elChart.value === 'area') void (async () => { await computeChart(); await runFit(); })();
+    if (chartInfo?.sdemSteps !== undefined || elChart.value === 'area' || elChart.value === 'balanced') void (async () => { await computeChart(); await runFit(); })();
   });
-  elChartSmooth.addEventListener('change', () => { if (chartInfo?.sdemSteps !== undefined || elChart.value === 'area') void (async () => { await computeChart(); await runFit(); })(); });
+  elChartSmooth.addEventListener('change', () => { if (chartInfo?.sdemSteps !== undefined || elChart.value === 'area' || elChart.value === 'balanced') void (async () => { await computeChart(); await runFit(); })(); });
   elSubdiv.addEventListener('change', () => { if (mesh && charted && !sampler) { applyChart(mesh, Float64Array.from(chartOf())); void runFit(); } });
   elLmax.addEventListener('change', () => { setSigmaControls(defaultSigma(Number(elLmax.value))); void runFit(); });
   elPlotOs.addEventListener('change', () => void rebuildDisplay());
